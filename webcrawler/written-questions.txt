@@ -1,0 +1,69 @@
+Written Questions
+
+Q1. Run the web crawler using the configurations located at src/main/config/written_question_1a.json and
+    src/main/config/written_question_1b.json. The only difference between these configurations is that one always uses
+    the sequential crawler and the other always uses the parallel crawler. Inspect the profile output in
+    profileData.txt.
+
+    If you are using a multi-processor computer, you should notice that SequentialWebCrawler#crawl and
+    ParallelWebCrawler#crawl took about the same amount of time, but PageParserImpl#parse took much longer when run with
+    the ParallelWebCrawler.
+
+    Why did the parser take more time when run with ParallelWebCrawler?
+Ans: In both SequentialWebCrawler and ParallelWebCrawler, the crawl method will be called once. In both the cases, the
+    time taken in crawl is approximately in the range of the value of timeout. This should be because the timeout sets
+    deadline for the crawl.
+    The parse method runs for each starting url and then for each link found in result recursively until either the
+    time deadline is reached or the maxdepth is reached.
+    By setting maxdepth to a big number like 10,
+    In the Sequential crawler, the crawler will probably reach the deadline before being able to reach the maxdepth.
+    In Parallel crawler, as the parse will run in parallel, it will parse upto a larger depth in the same time (i.e the
+    parse method will be called more number of times.) To verify, I added a counter and an AtomicCounter to
+    Sequential and Parallel crawler respectively. It is incremented every time crawlInternal is called in Sequential
+    crawler and every time compute is called in Parallel crawler. After running the crawler with config files for
+    written questions a few times, the count in parallel crawler was greater than sequential crawler most of the times.
+
+
+Q2. Your manager ran your crawler on her old personal computer, using the configurations from Q1, and she notices that
+    the sequential crawler actually outperforms the parallel crawler. She would like to know why.
+
+    (a) Suggest one reason why the sequential web crawler was able to read more web pages than the parallel crawler.
+        (Hint: Try setting "parallelism" to 1 in the JSON configs to simulate your manager's computer.)
+Ans: The old PC probably has a single core. Parallel crawler has the overhead of creating threads and switching between
+     the threads. But in reality there is a signle processor and all threads are using the same single processor.
+
+    (b) Suggest one scenario in which the parallel web crawler will almost certainly perform better than the sequential
+        crawler. Why will it perform better?
+Ans: When the number of processors is more than the number of threads, the parallel web will perform better than the
+     sequential crawler as the threads can actually run in parallel.
+
+Q3. Analyze your method profiler through the lens of Aspect Oriented Programming, by answering the following questions:
+
+    (a) What cross-cutting concern is being addressed by the com.udacity.webcrawler.profiler.Profiler class?
+        Ans: Performance
+    (b) What are the join points of the Profiler in the web crawler program?
+        Ans: The wrap method of ProfilerImpl wraps type <T> delegate. The annotation is applied to methods of the
+        Class<T>. So join points of the Profiler are methods of any class.
+        The pointcuts are PageParserImpl#parse, WebCrawler#crawl.
+
+Q4. Identify three (3) different design patterns used in this project, and explain which interfaces, classes, and/or
+    libraries use or implement those design patterns.
+
+    For each pattern, name one thing about the pattern that you LIKED, and one thing you DISLIKED. If you did not like
+    anything, you can name two things you disliked.
+Ans: 1) Builder: used in CrawlerConfiguration. The CrawlerConfiguration objects are built using CrawlerConfiguration.
+    Builder class.
+    Liked: When there are many instance variables, you need not worry about order of variables passed to the constructor.
+    The constructor is called only by the Builder class. Clients use Builder class methods to set the values.
+    Disliked: The builder class has to have all the same variables declared as the instance variables of the class being
+    built.
+    2) Dependancy Injection: Implemented by Guice. Used to inject WebCrawler and Profiler in WebCrawlerMain class.
+    Liked: You do not have to create the instances of the dependency classes.
+    Disliked: The code is difficult to follow as it is not easily clear from the @Inject annotations how and where the
+    instances are created.
+    3) Abstract Factory: PageParserFactory is the interface for this factory. It is implemented by PageParserFactoryImpl
+    which actually creates objects that implement PageParser interface. Here PageParserImpl is one class that implements
+    PageParser.
+    Liked: Factory can return different implementations of interface. Clients use abstract interfaces.
+    Disliked: More classes and interfaces are added to code. It makes code difficult to understand.
+
